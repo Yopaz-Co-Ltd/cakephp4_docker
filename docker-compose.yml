@@ -1,0 +1,41 @@
+version: "3.7"
+
+services:
+  ### PHP ##############################################
+  php-fpm:
+    build: ./php
+    container_name: cakephp4-php-fpm
+    environment:
+      TZ: Asia/Tokyo
+    volumes:
+      - ./workspace:/var/www/html
+      - ./php/php.ini:/usr/local/etc/php/php.ini
+      - ./php/msmtprc:/etc/msmtprc
+  ### Nginx ##############################################
+  nginx:
+    image: nginx:1.20.0
+    container_name: cakephp4-nginx
+    ports:
+      - 80:80
+      - 8765:8765
+    volumes:
+      - ./nginx/default.conf.template:/etc/nginx/conf.d/default.conf.template
+      - ./workspace:/var/www/html
+    environment:
+      - PHP_APP_HOST=php-fpm
+    command: /bin/sh -c "envsubst '$$PHP_APP_HOST' < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf && exec nginx -g 'daemon off;'"
+  ### MySQL ##############################################
+  mysql:
+    image: mysql:8.0
+    container_name: cakephp4-mysql
+    environment:
+      MYSQL_DATABASE: cakephp4
+      MYSQL_ROOT_PASSWORD: password
+      TZ: Asia/Tokyo
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_general_ci
+    ports:
+      - 3306:3306
+    volumes:
+      - ./db/init:/docker-entrypoint-initdb.d
+      - ./db/data:/var/lib/mysql
+      - ./db/my.cnf:/etc/mysql/conf.d/my.cnf
